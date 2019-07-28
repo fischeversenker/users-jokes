@@ -1,0 +1,22 @@
+{
+  "elm.compiler": "./node_modules/.bin/elm",
+  "elm.makeCommand": "./node_modules/.bin/elm-make",
+  "editor.formatOnSave": true,
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "\\.elm$",
+        "cmd": "elm-format ${file} --yes"
+      },
+      {
+        "match": ".*",
+        "isAsync": true,
+        "cmd": "echo 'I run for all files.'"
+      },
+      {
+        "match": "\\.elm$",
+        "cmd": "echo 'I am a .elm file ${file}.'"
+      }
+    ]
+  }
+}

@@ -29,12 +29,13 @@ type alias Model =
     , age : Int
     , submittedOnce : Bool
     , users : List User
+    , valid : Bool
     }
 
 
 init : Model
 init =
-    Model "" "" 20 False [ Regular "Felix" 29, Visitor "Yasna" ]
+    Model "" "" 20 False [ Regular "Felix" 29, Visitor "Yasna" ] False
 
 
 
@@ -55,13 +56,23 @@ update msg model =
             { model | name = name }
 
         Password password ->
-            { model | password = password }
+            { model | password = password, valid = isValid model }
 
         Age age ->
             { model | age = Maybe.withDefault 0 (String.toInt age) }
 
         Submit ->
-            { model | submittedOnce = True, name = "", password = "", age = 20 }
+            submitHandler model
+
+
+submitHandler : Model -> Model
+submitHandler model =
+    case model.valid of
+        True ->
+            { model | submittedOnce = False, name = "", password = "", age = 20 }
+
+        False ->
+            { model | submittedOnce = True }
 
 
 
@@ -79,7 +90,7 @@ view model =
         , viewInput "number" "Age" (String.fromInt model.age) Age
         , button [ onClick Submit ] [ text "Submit" ]
         , viewUsers model.users
-        , viewValidation model.submittedOnce model.password
+        , viewValidation model.submittedOnce model.valid
         ]
 
 
@@ -109,16 +120,25 @@ viewInput t p v toMsg =
     input [ type_ t, placeholder p, value v, onInput toMsg ] []
 
 
-viewValidation : Bool -> String -> Html msg
-viewValidation visible password =
-    if not visible then
+viewValidation : Bool -> Bool -> Html msg
+viewValidation submitted valid =
+    if not submitted then
         div [] []
 
-    else if String.length password < 8 then
+    else if not valid then
         coloredDiv "red" "Password needs to be at least 8 characters long!"
 
     else
         coloredDiv "green" "OK"
+
+
+isValid : Model -> Bool
+isValid model =
+    if String.length model.password < 6 then
+        False
+
+    else
+        True
 
 
 coloredDiv : String -> String -> Html msg

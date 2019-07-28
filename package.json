@@ -6,7 +6,8 @@
     "elm-format": "^0.8.1"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "elm-format src/ --yes"
   },
   "license": "ISC"
 }

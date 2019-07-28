@@ -31,26 +31,36 @@ type alias User =
     }
 
 
-type alias Model =
+type alias UiFormState =
     { name : String
     , password : String
     , age : Int
-    , submittedOnce : Bool
-    , users : List User
+    }
+
+
+type alias UiState =
+    { form : UiFormState
     , valid : Bool
     }
 
 
+type alias Model =
+    { ui : UiState
+    , submittedOnce : Bool
+    , users : List User
+    }
+
+
+defaultUsers : List User
+defaultUsers =
+    [ { userType = Regular, name = "Felix", password = "", age = Just 29 }
+    , { userType = Visitor, name = "Yasna", password = "", age = Nothing }
+    ]
+
+
 init : Model
 init =
-    Model ""
-        ""
-        20
-        False
-        [ { userType = Regular, name = "Felix", password = "", age = Just 29 }
-        , { userType = Visitor, name = "Yasna", password = "", age = Nothing }
-        ]
-        False
+    { ui = { form = { name = "", password = "", age = 20 }, valid = False }, submittedOnce = False, users = defaultUsers }
 
 
 
@@ -67,28 +77,118 @@ type Msg
 update : Msg -> Model -> Model
 update msg model =
     case msg of
+        -- TODO: refactor this. Difference is only which field gets updated
         Name name ->
-            { model | name = name }
+            let
+                updatedForm : UiFormState
+                updatedForm =
+                    setName name model.ui.form
+
+                oldUiState : UiState
+                oldUiState =
+                    model.ui
+
+                updatedUiState : UiState
+                updatedUiState =
+                    { oldUiState | form = updatedForm, valid = isValid model }
+            in
+            { model | ui = updatedUiState }
 
         Password password ->
-            { model | password = password, valid = isValid model }
+            let
+                updatedForm : UiFormState
+                updatedForm =
+                    setPassword password model.ui.form
+
+                oldUiState : UiState
+                oldUiState =
+                    model.ui
+
+                updatedUiState : UiState
+                updatedUiState =
+                    { oldUiState | form = updatedForm, valid = isValid model }
+            in
+            { model | ui = updatedUiState }
 
         Age age ->
-            { model | age = Maybe.withDefault 0 (String.toInt age) }
+            let
+                updatedForm : UiFormState
+                updatedForm =
+                    setAge age model.ui.form
+
+                oldUiState : UiState
+                oldUiState =
+                    model.ui
+
+                updatedUiState : UiState
+                updatedUiState =
+                    { oldUiState | form = updatedForm, valid = isValid model }
+            in
+            { model | ui = updatedUiState }
 
         Submit ->
             submitHandler model
 
 
+setName : String -> UiFormState -> UiFormState
+setName newName form =
+    { form | name = newName }
+
+
+setPassword : String -> UiFormState -> UiFormState
+setPassword newPassword form =
+    { form | password = newPassword }
+
+
+setAge : String -> UiFormState -> UiFormState
+setAge newAge form =
+    case String.toInt newAge of
+        Nothing ->
+            form
+
+        Just age ->
+            { form | age = age }
+
+
+updateUiState : Model -> UiState
+updateUiState model =
+    let
+        uiState : UiState
+        uiState =
+            model.ui
+
+        oldForm : UiFormState
+        oldForm =
+            uiState.form
+
+        updatedForm : UiFormState
+        updatedForm =
+            { oldForm
+                | name = oldForm.name
+                , password = oldForm.password
+                , age = oldForm.age
+            }
+    in
+    { uiState | form = oldForm }
+
+
+emptyUiFormState : UiFormState
+emptyUiFormState =
+    { name = "", password = "", age = 20 }
+
+
+emptyUiState : UiState
+emptyUiState =
+    { form = emptyUiFormState, valid = False }
+
+
 submitHandler : Model -> Model
 submitHandler model =
-    case model.valid of
+    case model.ui.valid of
         True ->
             { model
                 | submittedOnce = False
-                , name = ""
-                , password = ""
-                , age = 20
+                , ui = emptyUiState
                 , users = model.users ++ [ userFromModel model ]
             }
 
@@ -98,7 +198,7 @@ submitHandler model =
 
 userFromModel : Model -> User
 userFromModel model =
-    User Regular model.name model.password (Just model.age)
+    User Regular model.ui.form.name model.ui.form.password (Just model.ui.form.age)
 
 
 
@@ -109,14 +209,14 @@ view : Model -> Html Msg
 view model =
     div []
         [ label [] [ text "Name" ]
-        , viewInput "text" "Name" model.name Name
+        , viewInput "text" "Name" model.ui.form.name Name
         , label [] [ text "Pasword" ]
-        , viewInput "password" "Password" model.password Password
+        , viewInput "password" "Password" model.ui.form.password Password
         , label [] [ text "Age" ]
-        , viewInput "number" "Age" (String.fromInt model.age) Age
+        , viewInput "number" "Age" (String.fromInt model.ui.form.age) Age
         , button [ onClick Submit ] [ text "Submit" ]
         , viewUsers model.users
-        , viewValidation model.submittedOnce model.valid
+        , viewValidation model.submittedOnce model.ui.valid
         ]
 
 
@@ -147,7 +247,7 @@ viewValidation submitted valid =
         div [] []
 
     else if not valid then
-        coloredDiv "red" "Password needs to be at least 8 characters long!"
+        coloredDiv "red" "Password needs to be at least 6 characters long!"
 
     else
         coloredDiv "green" "OK"
@@ -155,7 +255,7 @@ viewValidation submitted valid =
 
 isValid : Model -> Bool
 isValid model =
-    if String.length model.password < 6 then
+    if String.length model.ui.form.password < 6 then
         False
 
     else

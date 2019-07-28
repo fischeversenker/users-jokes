@@ -18,9 +18,17 @@ main =
 -- MODEL
 
 
-type User
-    = Regular String Int
-    | Visitor String
+type UserType
+    = Regular
+    | Visitor
+
+
+type alias User =
+    { userType : UserType
+    , name : String
+    , password : String
+    , age : Maybe Int
+    }
 
 
 type alias Model =
@@ -35,7 +43,14 @@ type alias Model =
 
 init : Model
 init =
-    Model "" "" 20 False [ Regular "Felix" 29, Visitor "Yasna" ] False
+    Model ""
+        ""
+        20
+        False
+        [ { userType = Regular, name = "Felix", password = "", age = Just 29 }
+        , { userType = Visitor, name = "Yasna", password = "", age = Nothing }
+        ]
+        False
 
 
 
@@ -69,10 +84,21 @@ submitHandler : Model -> Model
 submitHandler model =
     case model.valid of
         True ->
-            { model | submittedOnce = False, name = "", password = "", age = 20 }
+            { model
+                | submittedOnce = False
+                , name = ""
+                , password = ""
+                , age = 20
+                , users = model.users ++ [ userFromModel model ]
+            }
 
         False ->
             { model | submittedOnce = True }
+
+
+userFromModel : Model -> User
+userFromModel model =
+    User Regular model.name model.password (Just model.age)
 
 
 
@@ -102,17 +128,12 @@ viewUsers users =
 
 viewUser : User -> Html Msg
 viewUser user =
-    li [] [ text (toName user) ]
+    li [] [ userInfoText user ]
 
 
-toName : User -> String
-toName user =
-    case user of
-        Regular name _ ->
-            name
-
-        Visitor name ->
-            name
+userInfoText : User -> Html Msg
+userInfoText user =
+    text (String.join ", " [ user.name, String.fromInt (Maybe.withDefault 20 user.age) ])
 
 
 viewInput : String -> String -> String -> (String -> msg) -> Html msg

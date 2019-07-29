@@ -201,6 +201,15 @@ userFromModel model =
     User Regular model.ui.form.name model.ui.form.password (Just model.ui.form.age)
 
 
+isValid : Model -> Bool
+isValid model =
+    if String.length model.ui.form.password < 6 then
+        False
+
+    else
+        True
+
+
 
 -- VIEW
 
@@ -251,15 +260,6 @@ viewValidation submitted valid =
 
     else
         coloredDiv "green" "OK"
-
-
-isValid : Model -> Bool
-isValid model =
-    if String.length model.ui.form.password < 6 then
-        False
-
-    else
-        True
 
 
 coloredDiv : String -> String -> Html msg

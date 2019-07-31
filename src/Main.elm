@@ -51,6 +51,16 @@ type alias Model =
     }
 
 
+emptyUiFormState : UiFormState
+emptyUiFormState =
+    { name = "", password = "", age = 20 }
+
+
+emptyUiState : UiState
+emptyUiState =
+    { form = emptyUiFormState, valid = False }
+
+
 defaultUsers : List User
 defaultUsers =
     [ { userType = Regular, name = "Felix", password = "", age = Just 29 }
@@ -60,7 +70,7 @@ defaultUsers =
 
 init : Model
 init =
-    { ui = { form = { name = "", password = "", age = 20 }, valid = False }, submittedOnce = False, users = defaultUsers }
+    { ui = emptyUiState, submittedOnce = False, users = defaultUsers }
 
 
 
@@ -170,16 +180,6 @@ updateUiState model =
             }
     in
     { uiState | form = oldForm }
-
-
-emptyUiFormState : UiFormState
-emptyUiFormState =
-    { name = "", password = "", age = 20 }
-
-
-emptyUiState : UiState
-emptyUiState =
-    { form = emptyUiFormState, valid = False }
 
 
 submitHandler : Model -> Model

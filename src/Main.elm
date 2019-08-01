@@ -4,6 +4,7 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
+import Http exposing (..)
 
 
 
@@ -11,7 +12,12 @@ import Html.Events exposing (onClick, onInput)
 
 
 main =
-    Browser.sandbox { init = init, update = update, view = view }
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
 
 
 
@@ -26,14 +32,12 @@ type UserType
 type alias User =
     { userType : UserType
     , name : String
-    , password : String
     , age : Maybe Int
     }
 
 
 type alias UiFormState =
     { name : String
-    , password : String
     , age : Int
     }
 
@@ -47,30 +51,46 @@ type alias UiState =
 type alias Model =
     { ui : UiState
     , submittedOnce : Bool
+    , gotText: Bool
     , users : List User
     }
 
 
-emptyUiFormState : UiFormState
-emptyUiFormState =
-    { name = "", password = "", age = 20 }
+initialUiFormState : UiFormState
+initialUiFormState =
+    { name = "", age = 20 }
 
 
-emptyUiState : UiState
-emptyUiState =
-    { form = emptyUiFormState, valid = False }
+initialUiState : UiState
+initialUiState =
+    { form = initialUiFormState, valid = False }
 
 
-defaultUsers : List User
-defaultUsers =
-    [ { userType = Regular, name = "Felix", password = "", age = Just 29 }
-    , { userType = Visitor, name = "Yasna", password = "", age = Nothing }
-    ]
+defaultUser : User
+defaultUser =
+    User Regular "Felix" (Just 29)
 
+init : () -> ( Model, Cmd Msg )
+init _ =
+    let
+        model : Model
+        model =
+            Model initialUiState False False [ defaultUser ]
 
-init : Model
-init =
-    { ui = emptyUiState, submittedOnce = False, users = defaultUsers }
+        headers : List Header
+        headers = [Http.header "Accept" "text/plain"]
+    in
+    ( model,
+      Http.request
+        { method = "GET"
+        , headers = headers
+        , url = "https://icanhazdadjoke.com/"
+        , body = Http.emptyBody
+        , expect = Http.expectString GotText
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+    )
 
 
 
@@ -79,12 +99,12 @@ init =
 
 type Msg
     = Name String
-    | Password String
     | Age String
+    | GotText (Result Http.Error String)
     | Submit
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         -- TODO: refactor this. Difference is only which field gets updated
@@ -102,23 +122,7 @@ update msg model =
                 updatedUiState =
                     { oldUiState | form = updatedForm, valid = isValid model }
             in
-            { model | ui = updatedUiState }
-
-        Password password ->
-            let
-                updatedForm : UiFormState
-                updatedForm =
-                    setPassword password model.ui.form
-
-                oldUiState : UiState
-                oldUiState =
-                    model.ui
-
-                updatedUiState : UiState
-                updatedUiState =
-                    { oldUiState | form = updatedForm, valid = isValid model }
-            in
-            { model | ui = updatedUiState }
+            ( { model | ui = updatedUiState }, Cmd.none )
 
         Age age ->
             let
@@ -134,20 +138,39 @@ update msg model =
                 updatedUiState =
                     { oldUiState | form = updatedForm, valid = isValid model }
             in
-            { model | ui = updatedUiState }
+            ( { model | ui = updatedUiState }, Cmd.none )
+
+
+        GotText result ->
+            case result of
+                Ok text ->
+                    let
+                        user =
+                            User Regular text (Just 20)
+                    in
+                    ( { model | users = model.users ++ [ user ], gotText = True }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         Submit ->
-            submitHandler model
+            case model.ui.valid of
+                True ->
+                    ( { model
+                        | submittedOnce = False
+                        , ui = initialUiState
+                        , users = model.users ++ [ userFromModel model ]
+                    }
+                    , Cmd.none
+                    )
+
+                False ->
+                    ( { model | submittedOnce = True }, Cmd.none )
 
 
 setName : String -> UiFormState -> UiFormState
 setName newName form =
     { form | name = newName }
-
-
-setPassword : String -> UiFormState -> UiFormState
-setPassword newPassword form =
-    { form | password = newPassword }
 
 
 setAge : String -> UiFormState -> UiFormState
@@ -160,50 +183,14 @@ setAge newAge form =
             { form | age = age }
 
 
-updateUiState : Model -> UiState
-updateUiState model =
-    let
-        uiState : UiState
-        uiState =
-            model.ui
-
-        oldForm : UiFormState
-        oldForm =
-            uiState.form
-
-        updatedForm : UiFormState
-        updatedForm =
-            { oldForm
-                | name = oldForm.name
-                , password = oldForm.password
-                , age = oldForm.age
-            }
-    in
-    { uiState | form = oldForm }
-
-
-submitHandler : Model -> Model
-submitHandler model =
-    case model.ui.valid of
-        True ->
-            { model
-                | submittedOnce = False
-                , ui = emptyUiState
-                , users = model.users ++ [ userFromModel model ]
-            }
-
-        False ->
-            { model | submittedOnce = True }
-
-
 userFromModel : Model -> User
 userFromModel model =
-    User Regular model.ui.form.name model.ui.form.password (Just model.ui.form.age)
+    User Regular model.ui.form.name (Just model.ui.form.age)
 
 
 isValid : Model -> Bool
 isValid model =
-    if String.length model.ui.form.password < 6 then
+    if String.length model.ui.form.name < 3 then
         False
 
     else
@@ -211,28 +198,43 @@ isValid model =
 
 
 
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
+
+
+
 -- VIEW
 
 
+-- helper for bools
+boolToString : Bool -> String
+boolToString bool =
+    case bool of
+        True -> "Wahr"
+        False -> "Falsch"
+
 view : Model -> Html Msg
 view model =
-    div []
-        [ label [] [ text "Name" ]
-        , viewInput "text" "Name" model.ui.form.name Name
-        , label [] [ text "Pasword" ]
-        , viewInput "password" "Password" model.ui.form.password Password
-        , label [] [ text "Age" ]
-        , viewInput "number" "Age" (String.fromInt model.ui.form.age) Age
-        , button [ onClick Submit ] [ text "Submit" ]
-        , viewUsers model.users
-        , viewValidation model.submittedOnce model.ui.valid
-        ]
+    case model.users of
+        [] ->
+            div [] [ text "nothing to see here" ]
 
-
-viewUsers : List User -> Html Msg
-viewUsers users =
-    ul []
-        (List.map viewUser users)
+        list ->
+            div []
+                [ label [] [ text "Name" ]
+                , viewInput "text" "Name" model.ui.form.name Name
+                , label [] [ text "Age" ]
+                , viewInput "number" "Age" (String.fromInt model.ui.form.age) Age
+                , button [ onClick Submit ] [ text "Submit" ]
+                , p [] [ text (boolToString model.gotText)]
+                , ul []
+                    (List.map viewUser model.users)
+                , viewValidation model.submittedOnce model.ui.valid
+                ]
 
 
 viewUser : User -> Html Msg

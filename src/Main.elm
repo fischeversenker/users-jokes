@@ -51,8 +51,9 @@ type alias UiState =
 type alias Model =
     { ui : UiState
     , submittedOnce : Bool
-    , gotText: Bool
+    , gotJoke : Bool
     , users : List User
+    , jokes : List String
     }
 
 
@@ -70,27 +71,15 @@ defaultUser : User
 defaultUser =
     User Regular "Felix" (Just 29)
 
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
         model : Model
         model =
-            Model initialUiState False False [ defaultUser ]
-
-        headers : List Header
-        headers = [Http.header "Accept" "text/plain"]
+            Model initialUiState False False [ defaultUser ] []
     in
-    ( model,
-      Http.request
-        { method = "GET"
-        , headers = headers
-        , url = "https://icanhazdadjoke.com/"
-        , body = Http.emptyBody
-        , expect = Http.expectString GotText
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-    )
+    ( model, Cmd.none )
 
 
 
@@ -100,7 +89,9 @@ init _ =
 type Msg
     = Name String
     | Age String
-    | GotText (Result Http.Error String)
+    | GetJoke
+    | GotJoke (Result Http.Error String)
+    | DeleteUser User
     | Submit
 
 
@@ -140,18 +131,34 @@ update msg model =
             in
             ( { model | ui = updatedUiState }, Cmd.none )
 
+        GetJoke ->
+            let
+                headers : List Header
+                headers =
+                    [ Http.header "Accept" "text/plain" ]
+            in
+            ( { model | gotJoke = False }
+            , Http.request
+                { method = "GET"
+                , headers = headers
+                , url = "https://icanhazdadjoke.com/"
+                , body = Http.emptyBody
+                , expect = Http.expectString GotJoke
+                , timeout = Nothing
+                , tracker = Nothing
+                }
+            )
 
-        GotText result ->
+        GotJoke result ->
             case result of
-                Ok text ->
-                    let
-                        user =
-                            User Regular text (Just 20)
-                    in
-                    ( { model | users = model.users ++ [ user ], gotText = True }, Cmd.none )
+                Ok joke ->
+                    ( { model | jokes = model.jokes ++ [ joke ], gotJoke = True }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
+
+        DeleteUser user ->
+            ( model, Cmd.none )
 
         Submit ->
             case model.ui.valid of
@@ -160,7 +167,7 @@ update msg model =
                         | submittedOnce = False
                         , ui = initialUiState
                         , users = model.users ++ [ userFromModel model ]
-                    }
+                      }
                     , Cmd.none
                     )
 
@@ -208,14 +215,18 @@ subscriptions model =
 
 
 -- VIEW
-
-
 -- helper for bools
+
+
 boolToString : Bool -> String
 boolToString bool =
     case bool of
-        True -> "Wahr"
-        False -> "Falsch"
+        True ->
+            "Wahr"
+
+        False ->
+            "Falsch"
+
 
 view : Model -> Html Msg
 view model =
@@ -230,16 +241,33 @@ view model =
                 , label [] [ text "Age" ]
                 , viewInput "number" "Age" (String.fromInt model.ui.form.age) Age
                 , button [ onClick Submit ] [ text "Submit" ]
-                , p [] [ text (boolToString model.gotText)]
-                , ul []
-                    (List.map viewUser model.users)
+                , button [ onClick GetJoke ] [ text "Get Joke" ]
+                , div []
+                    [ h3 [] [ text "Users" ]
+                    , ul []
+                        (List.map viewUser model.users)
+                    ]
+                , div []
+                    [ h3 [] [ text "Jokes" ]
+                    , p [] [ text (boolToString model.gotJoke) ]
+                    , ul []
+                        (List.map viewJoke model.jokes)
+                    ]
                 , viewValidation model.submittedOnce model.ui.valid
                 ]
 
 
+viewJoke : String -> Html Msg
+viewJoke joke =
+    li [] [ text joke ]
+
+
 viewUser : User -> Html Msg
 viewUser user =
-    li [] [ userInfoText user ]
+    li []
+        [ userInfoText user
+        , button [ onClick (DeleteUser user) ] [ text "Delete (TBD)" ]
+        ]
 
 
 userInfoText : User -> Html Msg
@@ -258,7 +286,7 @@ viewValidation submitted valid =
         div [] []
 
     else if not valid then
-        coloredDiv "red" "Password needs to be at least 6 characters long!"
+        coloredDiv "red" "Name needs to be at least 3 characters long!"
 
     else
         coloredDiv "green" "OK"

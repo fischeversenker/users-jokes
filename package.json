@@ -3,11 +3,21 @@
   "version": "0.0.0",
   "devDependencies": {
     "elm": "^0.19.0-no-deps",
-    "elm-format": "^0.8.1"
+    "elm-format": "^0.8.1",
+    "http-server": "^0.11.1",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^2.6.3",
+    "watch": "^1.0.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "format": "elm-format src/ --yes"
+    "start": "run-p elm:watch public:watch server",
+    "format": "elm-format src/ --yes",
+    "clean": "rimraf dist",
+    "elm:watch": "watch \"npm run elm:make\" src/",
+    "elm:make": "elm make src/Main.elm --output dist/main.js",
+    "server": "http-server dist",
+    "public:watch": "watch \"npm run public:build\" public/",
+    "public:build": "node build"
   },
   "license": "ISC"
 }

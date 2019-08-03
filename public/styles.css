@@ -1,0 +1,16 @@
+body {
+  padding: 20px;
+  margin: 0;
+  background-color: #efefef;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 20px;
+}
+
+.grid__container {
+  background-color: white;
+  padding: 20px;
+}

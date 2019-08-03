@@ -12,7 +12,7 @@ import Http exposing (..)
 
 
 main =
-    Browser.element
+    Browser.document
         { init = init
         , update = update
         , subscriptions = subscriptions
@@ -45,6 +45,12 @@ type alias UiFormState =
 type alias UiState =
     { form : UiFormState
     , valid : Bool
+    }
+
+
+type alias Document msg =
+    { title : String
+    , body : List (Html msg)
     }
 
 
@@ -215,7 +221,58 @@ subscriptions model =
 
 
 -- VIEW
--- helper for bools
+
+
+view : Model -> Document Msg
+view model =
+    { title = title model
+    , body =
+        [ div [ class "grid" ]
+            [ div [ class "grid__container" ]
+                [ h3 [] [ text "Users" ]
+                , div []
+                    [ addUserForm model.ui.form
+                    , viewValidation model.submittedOnce model.ui.valid
+                    , ul []
+                        (List.map viewUser model.users)
+                    ]
+                ]
+            , div [ class "grid__container" ]
+                [ h3 [] [ text "Jokes" ]
+                , div []
+                    [ getJokeButton model.gettingJoke
+                    , ul []
+                        (List.map viewJoke model.jokes)
+                    ]
+                ]
+            ]
+        ]
+    }
+
+
+viewJoke : String -> Html Msg
+viewJoke joke =
+    li [] [ text joke ]
+
+
+viewUser : User -> Html Msg
+viewUser user =
+    li []
+        [ userInfoText user
+        , button [ onClick (DeleteUser user) ] [ text "Delete (TBD)" ]
+        ]
+
+
+title : Model -> String
+title model =
+    let
+        userCount =
+            List.length model.users
+
+        jokeCount =
+            List.length model.jokes
+    in
+    "Users (" ++ String.fromInt userCount ++ ") and Jokes (" ++ String.fromInt jokeCount ++ ")"
 
 
 boolToString : Bool -> String
@@ -236,38 +293,6 @@ getJokeButton loading =
 
         False ->
             button [ onClick GetJoke ] [ text "Get Joke" ]
-
-
-view : Model -> Html Msg
-view model =
-    div []
-        [ addUserForm model.ui.form
-        , viewValidation model.submittedOnce model.ui.valid
-        , div []
-            [ h3 [] [ text "Users" ]
-            , ul []
-                (List.map viewUser model.users)
-            ]
-        , div []
-            [ h3 [] [ text "Jokes" ]
-            , getJokeButton model.gettingJoke
-            , ul []
-                (List.map viewJoke model.jokes)
-            ]
-        ]
-
-
-viewJoke : String -> Html Msg
-viewJoke joke =
-    li [] [ text joke ]
-
-
-viewUser : User -> Html Msg
-viewUser user =
-    li []
-        [ userInfoText user
-        , button [ onClick (DeleteUser user) ] [ text "Delete (TBD)" ]
-        ]
 
 
 userInfoText : User -> Html Msg

@@ -51,7 +51,7 @@ type alias UiState =
 type alias Model =
     { ui : UiState
     , submittedOnce : Bool
-    , gotJoke : Bool
+    , gettingJoke : Bool
     , users : List User
     , jokes : List String
     }
@@ -137,7 +137,7 @@ update msg model =
                 headers =
                     [ Http.header "Accept" "text/plain" ]
             in
-            ( { model | gotJoke = False }
+            ( { model | gettingJoke = True }
             , Http.request
                 { method = "GET"
                 , headers = headers
@@ -152,7 +152,7 @@ update msg model =
         GotJoke result ->
             case result of
                 Ok joke ->
-                    ( { model | jokes = model.jokes ++ [ joke ], gotJoke = True }, Cmd.none )
+                    ( { model | jokes = model.jokes ++ [ joke ], gettingJoke = False }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -222,39 +222,39 @@ boolToString : Bool -> String
 boolToString bool =
     case bool of
         True ->
-            "Wahr"
+            ""
 
         False ->
-            "Falsch"
+            "Loading..."
+
+
+getJokeButton : Bool -> Html Msg
+getJokeButton loading =
+    case loading of
+        True ->
+            button [ disabled True ] [ text "Loading..." ]
+
+        False ->
+            button [ onClick GetJoke ] [ text "Get Joke" ]
 
 
 view : Model -> Html Msg
 view model =
-    case model.users of
-        [] ->
-            div [] [ text "nothing to see here" ]
-
-        list ->
-            div []
-                [ label [] [ text "Name" ]
-                , viewInput "text" "Name" model.ui.form.name Name
-                , label [] [ text "Age" ]
-                , viewInput "number" "Age" (String.fromInt model.ui.form.age) Age
-                , button [ onClick Submit ] [ text "Submit" ]
-                , button [ onClick GetJoke ] [ text "Get Joke" ]
-                , div []
-                    [ h3 [] [ text "Users" ]
-                    , ul []
-                        (List.map viewUser model.users)
-                    ]
-                , div []
-                    [ h3 [] [ text "Jokes" ]
-                    , p [] [ text (boolToString model.gotJoke) ]
-                    , ul []
-                        (List.map viewJoke model.jokes)
-                    ]
-                , viewValidation model.submittedOnce model.ui.valid
-                ]
+    div []
+        [ addUserForm model.ui.form
+        , viewValidation model.submittedOnce model.ui.valid
+        , div []
+            [ h3 [] [ text "Users" ]
+            , ul []
+                (List.map viewUser model.users)
+            ]
+        , div []
+            [ h3 [] [ text "Jokes" ]
+            , getJokeButton model.gettingJoke
+            , ul []
+                (List.map viewJoke model.jokes)
+            ]
+        ]
 
 
 viewJoke : String -> Html Msg
@@ -273,6 +273,17 @@ viewUser user =
 userInfoText : User -> Html Msg
 userInfoText user =
     text (String.join ", " [ user.name, String.fromInt (Maybe.withDefault 20 user.age) ])
+
+
+addUserForm : UiFormState -> Html Msg
+addUserForm form =
+    div []
+        [ label [] [ text "Name" ]
+        , viewInput "text" "Name" form.name Name
+        , label [] [ text "Age" ]
+        , viewInput "number" "Age" (String.fromInt form.age) Age
+        , button [ onClick Submit ] [ text "Add user" ]
+        ]
 
 
 viewInput : String -> String -> String -> (String -> msg) -> Html msg

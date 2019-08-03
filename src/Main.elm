@@ -5,7 +5,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (..)
-
+import Random
+import Random.String
+import Random.Char
 
 
 -- MAIN
@@ -30,7 +32,8 @@ type UserType
 
 
 type alias User =
-    { userType : UserType
+    { id : String
+    , userType : UserType
     , name : String
     , age : Maybe Int
     }
@@ -75,7 +78,7 @@ initialUiState =
 
 defaultUser : User
 defaultUser =
-    User Regular "Felix" (Just 29)
+    User "abc" Regular "Felix" (Just 29)
 
 
 init : () -> ( Model, Cmd Msg )
@@ -164,7 +167,10 @@ update msg model =
                     ( model, Cmd.none )
 
         DeleteUser user ->
-            ( model, Cmd.none )
+            let
+                newUsers = List.filter (\userToCheck -> userToCheck.id /= user.id) model.users
+            in
+                ( { model | users = newUsers }, Cmd.none )
 
         Submit ->
             case model.ui.valid of
@@ -196,9 +202,21 @@ setAge newAge form =
             { form | age = age }
 
 
+seed : Random.Seed
+seed = Random.initialSeed 42
+
+
+randomUserId : String
+randomUserId =
+    let
+        (id, nextSeed) = Random.step (Random.String.string 32 Random.Char.latin) seed
+    in
+        id
+
+
 userFromModel : Model -> User
 userFromModel model =
-    User Regular model.ui.form.name (Just model.ui.form.age)
+    User (randomUserId ++ model.ui.form.name) Regular model.ui.form.name (Just model.ui.form.age)
 
 
 isValid : Model -> Bool
@@ -297,7 +315,7 @@ getJokeButton loading =
 
 userInfoText : User -> Html Msg
 userInfoText user =
-    text (String.join ", " [ user.name, String.fromInt (Maybe.withDefault 20 user.age) ])
+    span [ Html.Attributes.title user.id ] [ text (String.join ", " [ user.name, String.fromInt (Maybe.withDefault 20 user.age) ]) ]
 
 
 addUserForm : UiFormState -> Html Msg

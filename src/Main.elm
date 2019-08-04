@@ -1,6 +1,8 @@
 module Main exposing (Model, Msg(..), init, main, update, view, viewInput, viewValidation)
 
 import Browser
+import Browser.Navigation as Nav
+import Url
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -14,11 +16,13 @@ import Random.Char
 
 
 main =
-    Browser.document
+    Browser.application
         { init = init
         , update = update
         , subscriptions = subscriptions
         , view = view
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         }
 
 
@@ -51,14 +55,10 @@ type alias UiState =
     }
 
 
-type alias Document msg =
-    { title : String
-    , body : List (Html msg)
-    }
-
-
 type alias Model =
-    { ui : UiState
+    { key : Nav.Key
+    , url : Url.Url
+    , ui : UiState
     , submittedOnce : Bool
     , gettingJoke : Bool
     , users : List User
@@ -76,17 +76,12 @@ initialUiState =
     { form = initialUiFormState, valid = False }
 
 
-defaultUser : User
-defaultUser =
-    User "abc" Regular "Felix" (Just 29)
-
-
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     let
         model : Model
         model =
-            Model initialUiState False False [ defaultUser ] []
+            Model key url initialUiState False False [] []
     in
     ( model, Cmd.none )
 
@@ -101,6 +96,8 @@ type Msg
     | GetJoke
     | GotJoke (Result Http.Error String)
     | DeleteUser User
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
     | Submit
 
 
@@ -142,7 +139,7 @@ update msg model =
 
         GetJoke ->
             let
-                headers : List Header
+                headers : List Http.Header
                 headers =
                     [ Http.header "Accept" "text/plain" ]
             in
@@ -171,6 +168,17 @@ update msg model =
                 newUsers = List.filter (\userToCheck -> userToCheck.id /= user.id) model.users
             in
                 ( { model | users = newUsers }, Cmd.none )
+
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | url = url }, Cmd.none )
 
         Submit ->
             case model.ui.valid of
@@ -241,7 +249,7 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> Document Msg
+view : Model -> Browser.Document Msg
 view model =
     { title = title model
     , body =
@@ -264,9 +272,39 @@ view model =
                     ]
                 ]
             ]
+        , text "The current URL is: "
+        , b [] [ text (Url.toString model.url) ]
+        , ul []
+            [ viewLink "/" (Just "Home") False
+            , viewLink "/profile" Nothing False
+            , viewLink "/reviews/the-century-of-the-self" Nothing False
+            , viewLink "/reviews/public-opinion" Nothing False
+            , viewLink "https://heise.de" (Just "Heise") True
+            ]
         ]
     }
 
+viewLink : String -> Maybe String -> Bool -> Html msg
+viewLink path mLabel external =
+    let
+        linkTarget : String
+        linkTarget =
+            case external of
+                True ->
+                    "_blank"
+                False ->
+                    "_self"
+
+        linkLabel : String
+        linkLabel =
+            case mLabel of
+                Just label ->
+                    label
+                Nothing ->
+                    path
+
+    in
+    li [] [ a [ href path, target linkTarget ] [ text linkLabel ] ]
 
 viewJoke : String -> Html Msg
 viewJoke joke =

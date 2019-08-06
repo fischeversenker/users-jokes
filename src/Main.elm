@@ -2,14 +2,15 @@ module Main exposing (Model, Msg(..), init, main, update, view, viewInput, viewV
 
 import Browser
 import Browser.Navigation as Nav
-import Url
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (..)
 import Random
-import Random.String
 import Random.Char
+import Random.String
+import Url
+
 
 
 -- MAIN
@@ -165,9 +166,10 @@ update msg model =
 
         DeleteUser user ->
             let
-                newUsers = List.filter (\userToCheck -> userToCheck.id /= user.id) model.users
+                newUsers =
+                    List.filter (\userToCheck -> userToCheck.id /= user.id) model.users
             in
-                ( { model | users = newUsers }, Cmd.none )
+            ( { model | users = newUsers }, Cmd.none )
 
         LinkClicked urlRequest ->
             case urlRequest of
@@ -211,15 +213,17 @@ setAge newAge form =
 
 
 seed : Random.Seed
-seed = Random.initialSeed 42
+seed =
+    Random.initialSeed 42
 
 
 randomUserId : String
 randomUserId =
     let
-        (id, nextSeed) = Random.step (Random.String.string 32 Random.Char.latin) seed
+        ( id, nextSeed ) =
+            Random.step (Random.String.string 32 Random.Char.latin) seed
     in
-        id
+    id
 
 
 userFromModel : Model -> User
@@ -253,7 +257,16 @@ view : Model -> Browser.Document Msg
 view model =
     { title = title model
     , body =
-        [ div [ class "grid" ]
+        [ text "The current URL is: "
+        , b [] [ text (Url.toString model.url) ]
+        , ul []
+            [ viewLink "/" (Just "Home") False
+            , viewLink "/profile" Nothing False
+            , viewLink "/reviews/the-century-of-the-self" Nothing False
+            , viewLink "/reviews/public-opinion" Nothing False
+            , viewLink "https://heise.de" (Just "Heise") True
+            ]
+        , div [ class "grid" ]
             [ div [ class "grid__container" ]
                 [ h3 [] [ text "Users" ]
                 , div []
@@ -272,39 +285,38 @@ view model =
                     ]
                 ]
             ]
-        , text "The current URL is: "
-        , b [] [ text (Url.toString model.url) ]
-        , ul []
-            [ viewLink "/" (Just "Home") False
-            , viewLink "/profile" Nothing False
-            , viewLink "/reviews/the-century-of-the-self" Nothing False
-            , viewLink "/reviews/public-opinion" Nothing False
-            , viewLink "https://heise.de" (Just "Heise") True
-            ]
         ]
     }
+
 
 viewLink : String -> Maybe String -> Bool -> Html msg
 viewLink path mLabel external =
     let
-        linkTarget : String
-        linkTarget =
+        basicLinkAttrs : List (Html.Attribute msg)
+        basicLinkAttrs =
+            [ href path
+            ]
+
+        linkAttrs : List (Html.Attribute msg)
+        linkAttrs =
             case external of
                 True ->
-                    "_blank"
+                    target "_blank" :: basicLinkAttrs
+
                 False ->
-                    "_self"
+                    basicLinkAttrs
 
         linkLabel : String
         linkLabel =
             case mLabel of
                 Just label ->
                     label
+
                 Nothing ->
                     path
-
     in
-    li [] [ a [ href path, target linkTarget ] [ text linkLabel ] ]
+    li [ style "display" "inline", style "padding-right" "10px" ] [ a linkAttrs [ text linkLabel ] ]
+
 
 viewJoke : String -> Html Msg
 viewJoke joke =
@@ -315,7 +327,7 @@ viewUser : User -> Html Msg
 viewUser user =
     li []
         [ userInfoText user
-        , button [ onClick (DeleteUser user) ] [ text "Delete (TBD)" ]
+        , button [ onClick (DeleteUser user) ] [ text "Delete" ]
         ]
 
 

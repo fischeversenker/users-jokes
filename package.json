@@ -6,6 +6,7 @@
     "elm-format": "^0.8.1",
     "http-server": "^0.11.1",
     "npm-run-all": "^4.1.5",
+    "pushstate-server": "^3.1.0",
     "rimraf": "^2.6.3",
     "watch": "^1.0.2"
   },
@@ -15,9 +16,9 @@
     "clean": "rimraf dist",
     "elm:watch": "watch \"npm run elm:make\" src/",
     "elm:make": "elm make src/Main.elm --output dist/main.js",
-    "server": "http-server dist",
     "public:watch": "watch \"npm run public:build\" public/",
-    "public:build": "node build"
+    "public:build": "node build",
+    "server": "node server"
   },
   "license": "ISC"
 }

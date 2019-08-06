@@ -1,3 +1,4 @@
 const fs = require('fs');
 
-['index.html', 'styles.css'].forEach(file => fs.copyFileSync(`public/${file}`, `dist/${file}`));
+const publicFiles = fs.readdirSync('public');
+publicFiles.forEach(file => fs.copyFileSync(`public/${file}`, `dist/${file}`));

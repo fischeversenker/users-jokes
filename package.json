@@ -14,6 +14,7 @@
     "start": "run-p elm:watch public:watch server",
     "format": "elm-format src/ --yes",
     "clean": "rimraf dist",
+    "build": "run-s public:build elm:make",
     "elm:watch": "watch \"npm run elm:make\" src/",
     "elm:make": "elm make src/Main.elm --output dist/main.js",
     "public:watch": "watch \"npm run public:build\" public/",
